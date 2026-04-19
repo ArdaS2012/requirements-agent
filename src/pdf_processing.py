@@ -7,7 +7,7 @@ import pymupdf4llm
 import pytesseract
 from PIL import Image
 from pypdf import PdfReader
-
+from .embeddings import create_embedding
 from .chunking import chunking_page
 from .config import client
 
@@ -16,12 +16,6 @@ def process_pdfs(path: str):
     """
     process pdfs for LLM
     """
-    def process_ocr_imgs(path,page_nr):
-        doc = fitz.open(path)
-        pix = doc[page_nr].get_pixmap(matrix=fitz.Matrix(2,2))
-        pix.save("temp_page.png")
-        page_to_str = pytesseract.image_to_string(Image.open("temp_page.png"))
-        return page_to_str
     def process_vlm(path):
         with open(path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode()
@@ -71,9 +65,10 @@ def process_pdfs(path: str):
                 pass
         #page_txt_content = page.extract_text()
         content["images"].append(f"Image description on page {page_nr}: {page_txtimg_content}" if page_txtimg_content!="" else "")
-        content["section_title"], content["chunk_content"], content["chunk_id"] = chunking_page(page_text)
+        content["section_title"], chunks, content["chunk_id"] = chunking_page(page_text)
+        content["chunk_content"].extend(chunks)
         content["metadata"]["page_start"] = page_nr
-        content["embeddings"].append("") #TODO: add embedding for the chunk content here, so we have all data for one chunk ready at the end of processing one page, and can insert it into db right after processing one page, instead of waiting for the whole document to be processed and then inserting all chunks at once.
+        content["embeddings"] = create_embedding(chunks)
 #TODO: return the content of one page and iterate somewhere else over all pages,
 # so we insert the chunks and all of its data into db right after processing one page, instead of waiting for the whole document to be processed and then inserting all chunks at once.
 # This way we can also handle bigger documents that might cause memory issues if we process the whole document at once and keep all chunks in memory until the end.
