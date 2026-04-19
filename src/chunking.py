@@ -1,14 +1,13 @@
 import re
-import uuid
 
 
-def chunking_page(page_text: str) -> tuple[list[str], list[str], list[str]]:
+def chunking_page(page_text: str) -> tuple[list[str], list[str], list[int]]:
     if not page_text.strip():
         return [], [], []
 
     section_titles: list[str] = []
     chunk_contents: list[str] = []
-    chunk_ids: list[str] = []
+    chunk_ids: list[int] = []
     pending_titles: list[str] = []
     buffer: list[str] = []
 
@@ -22,7 +21,7 @@ def chunking_page(page_text: str) -> tuple[list[str], list[str], list[str]]:
             title = " / ".join(pending_titles) if pending_titles else "Untitled"
             section_titles.append(title)
             chunk_contents.append(chunk)
-            chunk_ids.append(str(uuid.uuid4()))
+            chunk_ids.append(len(chunk_ids))
 
     for line in page_text.splitlines():
         match = re.match(r"^\s{0,3}#{1,6}\s+(.*?)\s*$", line)

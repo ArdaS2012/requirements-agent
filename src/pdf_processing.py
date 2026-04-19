@@ -12,7 +12,7 @@ from .chunking import chunking_page
 from .config import client
 
 
-def process_pdfs(path: str):
+def process_page(path: str):
     """
     process pdfs for LLM
     """
@@ -42,34 +42,28 @@ def process_pdfs(path: str):
         )
         content = out.choices[0].message.content
         return content
-    content = {
-        "source_path": path,
-        "images": [],
-        "chunk_id": [],
-        "chunk_content": [],
-        "page_nr": 0,
-        "section_title": [],
-        "metadata": {"page_start": 0},
-        "embeddings": []
-    }
     reader = PdfReader(path)
     doc = fitz.open(path)
     img_paths = os.listdir("extracted_images")
     for page_nr, page in enumerate(reader.pages):
         page_text = pymupdf4llm.to_markdown(doc, pages=[page_nr], header=False, footer=False)
-        page_txtimg_content = ""
+        page_txtimg_content = []
         for img in img_paths:
             m = re.match(r"img-(\d+)", os.path.splitext(img)[0])
             if m and int(m.group(1)) == page_nr:
                 #page_txtimg_content = process_vlm(f"extracted_images/{img}")
                 pass
         #page_txt_content = page.extract_text()
-        content["images"].append(f"Image description on page {page_nr}: {page_txtimg_content}" if page_txtimg_content!="" else "")
-        content["section_title"], chunks, content["chunk_id"] = chunking_page(page_text)
-        content["chunk_content"].extend(chunks)
-        content["metadata"]["page_start"] = page_nr
-        content["embeddings"] = create_embedding(chunks)
-#TODO: return the content of one page and iterate somewhere else over all pages,
-# so we insert the chunks and all of its data into db right after processing one page, instead of waiting for the whole document to be processed and then inserting all chunks at once.
-# This way we can also handle bigger documents that might cause memory issues if we process the whole document at once and keep all chunks in memory until the end.
-    return content
+        image_desc = f"Image description on page {page_nr}: {page_txtimg_content}" if page_txtimg_content != [] else ""
+        section_title, chunks, chunk_ids = chunking_page(page_text)
+        embeddings = create_embedding(chunks)
+        yield {
+            "source_path": path,
+            "page_nr": page_nr,
+            "image": image_desc,
+            "section_title": section_title,
+            "chunk_id": chunk_ids,
+            "chunk_content": chunks,
+            "metadata": {"page_start": page_nr},
+            "embeddings": embeddings,
+        }
