@@ -17,6 +17,7 @@ client = OpenAI(
 client_agent = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
 )
+NR_HISTORY = 10
 AGENT_SYSTEM_PROMPT = "You are an assistant for software requirements analysis. You will be provided questions to requirements of a specific document and need to answer as precisely as possible based on the content of the document." \
 " If you don't know the answer, say you don't know. Always be concise and precise in your answers. Do not provide any information that is not explicitly stated in the document. Always refer to the document content when answering questions." \
 "You will retrieve relevant information from the document based on the question and use that information to answer the question. You will not make any assumptions or guesses about the content of the document. Always provide answers that are directly supported by the content of the document."
