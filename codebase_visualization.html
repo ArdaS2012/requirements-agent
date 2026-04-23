@@ -873,7 +873,7 @@
     </div>
     <div class="note-card note-issue">
       <strong>Hardcoded Path</strong>
-      <p><code>config.py</code> contains an absolute path <code>/home/arda/Desktop/Projects/requirement_project/data/raw</code>. This breaks on any other machine. Should use a relative path or an environment variable.</p>
+      <p><code>config.py</code> previously contained an absolute path for <code>data/raw</code>. This has been fixed — <code>base_path</code> now uses a relative path derived from <code>__file__</code> and works on any machine.</p>
     </div>
     <div class="note-card note-issue">
       <strong>Hardcoded DB Password</strong>

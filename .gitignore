@@ -41,5 +41,8 @@ Thumbs.db
 data/raw/
 *.pdf
 
+# Conversation logs may contain document content and user queries
+outputs/logs/
+
 # Jupyter
 .ipynb_checkpoints/
