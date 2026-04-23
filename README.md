@@ -14,6 +14,7 @@ ReqBot is a **Retrieval-Augmented Generation (RAG)** chatbot that lets you ask n
 6. [Configuration](#configuration)
 7. [Usage](#usage)
 8. [Security](#security)
+9. [License](#license)
 
 ---
 
@@ -170,3 +171,11 @@ Every chat session is automatically saved to `outputs/logs/` as a plain-text fil
 - **HITL risk scoring** — inputs containing combinations of high-risk keywords are flagged for human review.
 - **Output validation** — LLM responses are scanned for system-prompt leakage or API key exposure before being returned to the client.
 - **Session isolation** — each browser session gets a random 16-byte ID; conversation histories are stored server-side and never shared across sessions.
+
+---
+
+## License
+
+This project's own source code is released under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+> **Dependency notice:** This project uses [PyMuPDF](https://github.com/pymupdf/PyMuPDF) (`fitz` / `pymupdf4llm`), which is licensed under **AGPL-3.0**. If you distribute this software or run it as a public service, the AGPL-3.0 terms require you to make the full source code available. For commercial/closed-source use, a separate PyMuPDF commercial license is required from Artifex.
