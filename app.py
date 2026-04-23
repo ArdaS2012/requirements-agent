@@ -1,9 +1,8 @@
 from flask import Flask, render_template, request, jsonify, session, send_from_directory
 import os
 from datetime import datetime
-from src.config import client_agent, AGENT_SYSTEM_PROMPT, NR_HISTORY
+from src.config import client_agent, AGENT_SYSTEM_PROMPT, NR_HISTORY, llm_pipeline
 from src.retrieval import process_query, rerank_query
-
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
@@ -72,8 +71,8 @@ def chat():
         return jsonify({"error": "Empty message"}), 400
 
     query = data["message"].strip()
+
     session_id = session.get("session_id", "default")
-    messages = get_messages(session_id)
 
     try:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -81,28 +80,14 @@ def chat():
             conversation_start[session_id] = datetime.now().strftime("%Y%m%d_%H%M%S")
         results = process_query(query)
         reranked_results = rerank_query(query, results)
-        #TODO: build security features to prevent prompt injection attacks since the retrieved chunks are directly included in the prompt
-        # also to prevent queries that are not related to the document and just try to manipulate the model into giving wrong answers
         top = reranked_results[0] if reranked_results else ("No relevant information found.", {}, 0.0)
         content, metadata = top[0], top[1]
         page = metadata.get("page_start", 0) + 1
         metadata_with_page = {**metadata, "page_start": page}
 
-        messages.append({
-            "role": "user",
-            "content": (
-                f"Query of the user: {query}. "
-                f"Retrieved text from the document: {content}. "
-                f"Source: {metadata_with_page}"
-            ),
-        })
 
-        completion = client_agent.chat.completions.create(
-            messages=[messages[0]] + messages[-NR_HISTORY:],
-            model="llama-3.3-70b-versatile",
-        )
-        response = completion.choices[0].message.content
-        messages.append({"role": "assistant", "content": response})
+        system_prompt = llm_pipeline.generate_system_prompt("Requirement Analyst", "Answering user queries about requirement documents based on retrieved information.")
+        response = llm_pipeline.process_request(query, system_prompt, content)
 
         turn_counter[session_id] = turn_counter.get(session_id, 0) + 1
         write_conversation_log(
@@ -110,7 +95,7 @@ def chat():
             timestamp=timestamp,
             query=query,
             retrieval_results=results if results else [],
-            system_prompt=AGENT_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             response=response,
             turn=turn_counter[session_id],
         )
@@ -153,6 +138,7 @@ def reset():
     session_id = session.get("session_id", "default")
     if session_id in conversation_store:
         del conversation_store[session_id]
+    llm_pipeline.messages = []
     turn_counter.pop(session_id, None)
     conversation_start.pop(session_id, None)
     session["session_id"] = os.urandom(16).hex()

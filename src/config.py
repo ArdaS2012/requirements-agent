@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from sentence_transformers import CrossEncoder, SentenceTransformer
 from groq import Groq
+from .security import SecureLLMPipeline
 
 DB_URL = "postgresql://postgres:password@localhost:5432/requirements"
 base_path = "/home/arda/Desktop/Projects/requirement_project/data/raw"
@@ -17,6 +18,7 @@ client = OpenAI(
 client_agent = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
 )
+llm_pipeline = SecureLLMPipeline(client_agent)
 cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 NR_HISTORY = 10
