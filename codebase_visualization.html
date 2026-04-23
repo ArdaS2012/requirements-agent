@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReqBot — Codebase Visualization</title>
+  <style>
+    :root {
+      --bg:        #050d1a;
+      --surface:   #0a1628;
+      --card:      #0d1f38;
+      --card2:     #112244;
+      --border:    #1e3a5f;
+      --accent:    #2563eb;
+      --accent2:   #3b82f6;
+      --accent3:   #60a5fa;
+      --teal:      #0ea5e9;
+      --green:     #22c55e;
+      --yellow:    #eab308;
+      --orange:    #f97316;
+      --red:       #ef4444;
+      --purple:    #a855f7;
+      --text:      #e2eaf6;
+      --muted:     #7fa3cc;
+      --tag-bg:    #0f2a4a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #061222 0%, #0d2044 50%, #0a1830 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 2.5rem 3rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 20% 50%, rgba(37,99,235,.18) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(14,165,233,.12) 0%, transparent 50%);
+    }
+    header > * { position: relative; }
+    header h1 { font-size: 2.2rem; font-weight: 700; color: #fff; letter-spacing: -.5px; }
+    header h1 span { color: var(--accent3); }
+    header p { color: var(--muted); margin-top: .4rem; font-size: 1rem; max-width: 600px; }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1260px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+    /* ── SECTION TITLES ── */
+    .section-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--accent3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px; height: 1.1em;
+      background: var(--accent2);
+      border-radius: 2px;
+    }
+
+    /* ── PIPELINE DIAGRAM ── */
+    .pipeline {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      flex-wrap: wrap;
+      margin-bottom: 3rem;
+    }
+    .pipeline-stage {
+      flex: 1;
+      min-width: 140px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1rem;
+      text-align: center;
+      position: relative;
+    }
+    .pipeline-stage + .pipeline-stage::before {
+      content: '→';
+      position: absolute;
+      left: -18px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--accent2);
+      font-size: 1.4rem;
+      font-weight: 700;
+      z-index: 1;
+    }
+    .pipeline-stage .stage-icon { font-size: 1.8rem; margin-bottom: .4rem; }
+    .pipeline-stage .stage-label { font-weight: 600; font-size: .88rem; color: var(--text); }
+    .pipeline-stage .stage-sub { font-size: .76rem; color: var(--muted); margin-top: .2rem; }
+    .stage-ingest  { border-color: var(--teal);   background: linear-gradient(160deg,#0d2a3a,#0d1f38); }
+    .stage-chunk   { border-color: var(--accent2); background: linear-gradient(160deg,#0d1a38,#0d1f38); }
+    .stage-embed   { border-color: var(--purple);  background: linear-gradient(160deg,#1a0d38,#0d1f38); }
+    .stage-store   { border-color: var(--green);   background: linear-gradient(160deg,#0d2a18,#0d1f38); }
+    .stage-query   { border-color: var(--yellow);  background: linear-gradient(160deg,#2a200d,#0d1f38); }
+    .stage-llm     { border-color: var(--orange);  background: linear-gradient(160deg,#2a150d,#0d1f38); }
+
+    /* ── TWO-FLOW SECTION ── */
+    .flows { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 3rem; }
+    @media(max-width:860px){ .flows { grid-template-columns: 1fr; } }
+
+    .flow-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+    }
+    .flow-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; display:flex; align-items:center; gap:.5rem; }
+    .badge {
+      display: inline-block;
+      padding: .15rem .55rem;
+      border-radius: 6px;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .badge-ingest { background: rgba(14,165,233,.2); color: var(--teal); }
+    .badge-query  { background: rgba(234,179,8,.2);  color: var(--yellow); }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+      margin-bottom: .85rem;
+    }
+    .flow-step:last-child { margin-bottom: 0; }
+    .step-num {
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 700;
+    }
+    .step-num-ingest { background: rgba(14,165,233,.25); color: var(--teal); }
+    .step-num-query  { background: rgba(234,179,8,.25);  color: var(--yellow); }
+    .flow-step-body strong { font-size: .88rem; color: var(--text); }
+    .flow-step-body p { font-size: .8rem; color: var(--muted); margin-top: .1rem; }
+    .flow-connector {
+      margin-left: 11px;
+      border-left: 2px dashed var(--border);
+      height: 10px;
+      margin-bottom: .85rem;
+    }
+
+    /* ── MODULE GRID ── */
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.3rem;
+      margin-bottom: 3rem;
+    }
+    .module-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.4rem 1.4rem 1.2rem;
+      transition: border-color .2s;
+    }
+    .module-card:hover { border-color: var(--accent2); }
+    .module-header {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      margin-bottom: .9rem;
+    }
+    .module-icon {
+      width: 38px; height: 38px;
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.15rem;
+      flex-shrink: 0;
+    }
+    .module-title { font-weight: 700; font-size: 1rem; color: var(--text); }
+    .module-file  { font-size: .74rem; color: var(--muted); font-family: monospace; margin-top: .1rem; }
+    .module-desc  { font-size: .83rem; color: var(--muted); margin-bottom: .9rem; line-height: 1.55; }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .tag {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .72rem;
+      font-family: monospace;
+      padding: .15rem .5rem;
+      color: var(--accent3);
+    }
+
+    .fn-list { list-style: none; margin-bottom: .9rem; }
+    .fn-list li {
+      font-size: .8rem;
+      padding: .25rem 0;
+      border-bottom: 1px solid rgba(30,58,95,.5);
+      display: flex;
+      gap: .5rem;
+    }
+    .fn-list li:last-child { border-bottom: none; }
+    .fn-sig { font-family: monospace; color: var(--accent3); }
+    .fn-note { color: var(--muted); font-size: .76rem; }
+
+    /* ── DEPENDENCY TABLE ── */
+    .dep-table-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 3rem;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: var(--card2); }
+    th {
+      text-align: left;
+      padding: .75rem 1.2rem;
+      font-size: .78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: .7rem 1.2rem;
+      font-size: .83rem;
+      border-bottom: 1px solid rgba(30,58,95,.4);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(37,99,235,.06); }
+    td code { font-family: monospace; color: var(--accent3); font-size: .8rem; }
+    .dep-purpose { color: var(--muted); }
+
+    /* ── DEPENDENCY MAP ── */
+    .dep-map {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 2rem;
+      margin-bottom: 3rem;
+    }
+    .dep-map svg { width: 100%; height: auto; }
+
+    /* ── NOTES / TODO ── */
+    .notes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 3rem;
+    }
+    .note-card {
+      border-radius: 12px;
+      padding: 1.1rem 1.2rem;
+      border-left: 4px solid;
+      font-size: .83rem;
+      line-height: 1.55;
+    }
+    .note-todo   { background: rgba(234,179,8,.08);  border-color: var(--yellow); }
+    .note-issue  { background: rgba(239,68,68,.08);  border-color: var(--red);    }
+    .note-good   { background: rgba(34,197,94,.08);  border-color: var(--green);  }
+    .note-card strong { display: block; margin-bottom: .3rem; font-size: .88rem; }
+    .note-todo   strong { color: var(--yellow); }
+    .note-issue  strong { color: var(--red);    }
+    .note-good   strong { color: var(--green);  }
+    .note-card p { color: var(--muted); }
+
+    /* ── DATABASE SCHEMA ── */
+    .schema-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 3rem;
+      font-family: monospace;
+    }
+    .schema-title { color: var(--accent3); font-size: .9rem; font-weight: 700; margin-bottom: .8rem; }
+    .schema-field {
+      display: flex; gap: 1.2rem;
+      padding: .35rem 0;
+      border-bottom: 1px solid rgba(30,58,95,.4);
+      font-size: .82rem;
+    }
+    .schema-field:last-child { border-bottom: none; }
+    .field-name  { color: var(--text); min-width: 140px; }
+    .field-type  { color: var(--purple); min-width: 120px; }
+    .field-note  { color: var(--muted); }
+
+    /* ── TECH STACK ── */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 3rem;
+    }
+    .tech-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: .8rem;
+    }
+    .tech-icon { font-size: 1.5rem; flex-shrink: 0; }
+    .tech-name { font-weight: 700; font-size: .88rem; color: var(--text); }
+    .tech-role { font-size: .76rem; color: var(--muted); margin-top: .15rem; }
+
+    /* ── SEPARATOR ── */
+    .sep { height: 1px; background: var(--border); margin: 2.5rem 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Req<span>Bot</span> — Codebase Visualization</h1>
+  <p>A RAG-powered requirements analysis agent. Ingests PDF documents, stores vector embeddings in PostgreSQL, and answers user questions via a Groq LLM.</p>
+</header>
+
+<div class="container">
+
+  <!-- ═══════════════ ARCHITECTURE OVERVIEW ═══════════════ -->
+  <div class="section-title">Architecture Overview</div>
+  <div class="pipeline">
+    <div class="pipeline-stage stage-ingest">
+      <div class="stage-icon">📄</div>
+      <div class="stage-label">PDF Ingestion</div>
+      <div class="stage-sub">PyMuPDF + pypdf</div>
+    </div>
+    <div class="pipeline-stage stage-chunk">
+      <div class="stage-icon">✂️</div>
+      <div class="stage-label">Chunking</div>
+      <div class="stage-sub">Markdown heading splits</div>
+    </div>
+    <div class="pipeline-stage stage-embed">
+      <div class="stage-icon">🧠</div>
+      <div class="stage-label">Embeddings</div>
+      <div class="stage-sub">all-MiniLM-L6-v2</div>
+    </div>
+    <div class="pipeline-stage stage-store">
+      <div class="stage-icon">🗄️</div>
+      <div class="stage-label">Vector Store</div>
+      <div class="stage-sub">PostgreSQL + pgvector</div>
+    </div>
+    <div class="pipeline-stage stage-query">
+      <div class="stage-icon">🔍</div>
+      <div class="stage-label">Retrieval</div>
+      <div class="stage-sub">Cosine similarity top-5</div>
+    </div>
+    <div class="pipeline-stage stage-llm">
+      <div class="stage-icon">💬</div>
+      <div class="stage-label">LLM Agent</div>
+      <div class="stage-sub">Groq llama-3.3-70b</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ DATA FLOWS ═══════════════ -->
+  <div class="section-title">Data Flows</div>
+  <div class="flows">
+
+    <div class="flow-card">
+      <h3><span class="badge badge-ingest">Ingestion Pipeline</span> Offline / One-Time</h3>
+
+      <div class="flow-step">
+        <div class="step-num step-num-ingest">1</div>
+        <div class="flow-step-body">
+          <strong>main.py → ingestion.process_ingestion()</strong>
+          <p>Iterates over every PDF in <code>data/raw/</code>. Assigns a <code>doc-N</code> document ID.</p>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+
+      <div class="flow-step">
+        <div class="step-num step-num-ingest">2</div>
+        <div class="flow-step-body">
+          <strong>pdf_processing.process_page(path)</strong>
+          <p>Reads each PDF page. Converts to Markdown via <code>pymupdf4llm</code>. Optionally describes figures through a VLM (currently commented out).</p>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+
+      <div class="flow-step">
+        <div class="step-num step-num-ingest">3</div>
+        <div class="flow-step-body">
+          <strong>chunking.chunking_page(text)</strong>
+          <p>Splits Markdown text at heading boundaries (<code>#</code>…<code>######</code>). Returns section titles, chunk contents, and sequential IDs.</p>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+
+      <div class="flow-step">
+        <div class="step-num step-num-ingest">4</div>
+        <div class="flow-step-body">
+          <strong>embeddings.create_embedding(chunks)</strong>
+          <p>Encodes each chunk with SentenceTransformer locally. Returns a list of float vectors.</p>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+
+      <div class="flow-step">
+        <div class="step-num step-num-ingest">5</div>
+        <div class="flow-step-body">
+          <strong>INSERT INTO rag_chunks</strong>
+          <p>Stores <code>document_id, chunk_index, content, metadata (JSONB), embedding (vector)</code> via psycopg3.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-card">
+      <h3><span class="badge badge-query">Query Pipeline</span> Interactive / Real-Time</h3>
+
+      <div class="flow-step">
+        <div class="step-num step-num-query">1</div>
+        <div class="flow-step-body">
+          <strong>agent.start_agent() — user input loop</strong>
+          <p>Reads user question from stdin. Maintains a rolling message history (system + last 4 turns).</p>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+
+      <div class="flow-step">
+        <div class="step-num step-num-query">2</div>
+        <div class="flow-step-body">
+          <strong>retrieval.process_query(query)</strong>
+          <p>Embeds the query string using the same SentenceTransformer. Runs a cosine distance (<code>&lt;=&gt;</code>) search against <code>rag_chunks</code>, returns top 5.</p>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+
+      <div class="flow-step">
+        <div class="step-num step-num-query">3</div>
+        <div class="flow-step-body">
+          <strong>Chunk selection (top-1, TODO: rerank)</strong>
+          <p>Currently takes only the single closest chunk. A TODO notes planned re-ranking logic.</p>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+
+      <div class="flow-step">
+        <div class="step-num step-num-query">4</div>
+        <div class="flow-step-body">
+          <strong>Groq API — llama-3.3-70b-versatile</strong>
+          <p>Sends system prompt + recent messages with the retrieved chunk as context. Receives a grounded answer.</p>
+        </div>
+      </div>
+      <div class="flow-connector"></div>
+
+      <div class="flow-step">
+        <div class="step-num step-num-query">5</div>
+        <div class="flow-step-body">
+          <strong>Print response → append to history</strong>
+          <p>Assistant reply is printed to stdout and stored for multi-turn context.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ MODULE DEPENDENCY MAP ═══════════════ -->
+  <div class="section-title">Module Dependency Map</div>
+  <div class="dep-map">
+    <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',sans-serif;">
+      <!-- Background -->
+      <rect width="900" height="420" fill="#0a1628" rx="10"/>
+
+      <!-- Arrow marker -->
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#2563eb" opacity=".8"/>
+        </marker>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#0ea5e9" opacity=".8"/>
+        </marker>
+      </defs>
+
+      <!-- ── NODES ── -->
+      <!-- main.py -->
+      <rect x="30" y="30" width="130" height="48" rx="9" fill="#112244" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="95" y="51" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="700">main.py</text>
+      <text x="95" y="68" text-anchor="middle" fill="#7fa3cc" font-size="9">Entry point</text>
+
+      <!-- src/__main__.py -->
+      <rect x="30" y="110" width="130" height="48" rx="9" fill="#112244" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="95" y="131" text-anchor="middle" fill="#60a5fa" font-size="10.5" font-weight="700">src/__main__.py</text>
+      <text x="95" y="147" text-anchor="middle" fill="#7fa3cc" font-size="9">Ingestion runner</text>
+
+      <!-- agent.py -->
+      <rect x="220" y="30" width="130" height="48" rx="9" fill="#1a0d38" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="285" y="51" text-anchor="middle" fill="#d8b4fe" font-size="11" font-weight="700">agent.py</text>
+      <text x="285" y="68" text-anchor="middle" fill="#7fa3cc" font-size="9">Chat loop &amp; LLM</text>
+
+      <!-- ingestion.py -->
+      <rect x="220" y="110" width="130" height="48" rx="9" fill="#0d2a3a" stroke="#0ea5e9" stroke-width="1.5"/>
+      <text x="285" y="131" text-anchor="middle" fill="#7dd3fc" font-size="11" font-weight="700">ingestion.py</text>
+      <text x="285" y="147" text-anchor="middle" fill="#7fa3cc" font-size="9">PDF → DB pipeline</text>
+
+      <!-- retrieval.py -->
+      <rect x="420" y="30" width="130" height="48" rx="9" fill="#2a200d" stroke="#eab308" stroke-width="1.5"/>
+      <text x="485" y="51" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="700">retrieval.py</text>
+      <text x="485" y="68" text-anchor="middle" fill="#7fa3cc" font-size="9">Vector similarity search</text>
+
+      <!-- pdf_processing.py -->
+      <rect x="420" y="110" width="130" height="48" rx="9" fill="#0d2a3a" stroke="#0ea5e9" stroke-width="1.5"/>
+      <text x="485" y="131" text-anchor="middle" fill="#7dd3fc" font-size="11" font-weight="700">pdf_processing.py</text>
+      <text x="485" y="147" text-anchor="middle" fill="#7fa3cc" font-size="9">Page parser + VLM</text>
+
+      <!-- config.py -->
+      <rect x="620" y="70" width="130" height="48" rx="9" fill="#0d2a18" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="685" y="91" text-anchor="middle" fill="#86efac" font-size="11" font-weight="700">config.py</text>
+      <text x="685" y="107" text-anchor="middle" fill="#7fa3cc" font-size="9">Clients, models, prompts</text>
+
+      <!-- embeddings.py -->
+      <rect x="420" y="220" width="130" height="48" rx="9" fill="#1a0d38" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="485" y="241" text-anchor="middle" fill="#d8b4fe" font-size="11" font-weight="700">embeddings.py</text>
+      <text x="485" y="257" text-anchor="middle" fill="#7fa3cc" font-size="9">SentenceTransformer encode</text>
+
+      <!-- chunking.py -->
+      <rect x="620" y="220" width="130" height="48" rx="9" fill="#2a150d" stroke="#f97316" stroke-width="1.5"/>
+      <text x="685" y="241" text-anchor="middle" fill="#fed7aa" font-size="11" font-weight="700">chunking.py</text>
+      <text x="685" y="257" text-anchor="middle" fill="#7fa3cc" font-size="9">Heading-based splitter</text>
+
+      <!-- PostgreSQL -->
+      <rect x="620" y="330" width="130" height="48" rx="9" fill="#0d2a18" stroke="#22c55e" stroke-width="2"/>
+      <text x="685" y="351" text-anchor="middle" fill="#86efac" font-size="11" font-weight="700">PostgreSQL</text>
+      <text x="685" y="368" text-anchor="middle" fill="#7fa3cc" font-size="9">pgvector · rag_chunks</text>
+
+      <!-- Groq API -->
+      <rect x="820" y="30" width="65" height="40" rx="9" fill="#112244" stroke="#f97316" stroke-width="1.5"/>
+      <text x="852" y="53" text-anchor="middle" fill="#fed7aa" font-size="9.5" font-weight="700">Groq API</text>
+
+      <!-- HuggingFace -->
+      <rect x="820" y="100" width="65" height="40" rx="9" fill="#112244" stroke="#fde68a" stroke-width="1.5"/>
+      <text x="852" y="119" text-anchor="middle" fill="#fde68a" font-size="9" font-weight="700">HF Router</text>
+      <text x="852" y="132" text-anchor="middle" fill="#7fa3cc" font-size="8">(VLM)</text>
+
+      <!-- ── EDGES ── -->
+      <!-- main → agent -->
+      <line x1="160" y1="54" x2="218" y2="54" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)" opacity=".8"/>
+      <!-- main → ingestion -->
+      <line x1="160" y1="65" x2="218" y2="120" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)" opacity=".8"/>
+      <!-- __main__ → ingestion -->
+      <line x1="160" y1="134" x2="218" y2="134" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arr)" opacity=".8"/>
+
+      <!-- agent → retrieval -->
+      <line x1="350" y1="54" x2="418" y2="54" stroke="#a855f7" stroke-width="1.5" marker-end="url(#arr)" opacity=".8"/>
+      <!-- agent → config -->
+      <line x1="350" y1="46" x2="618" y2="80" stroke="#a855f7" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arr)" opacity=".65"/>
+
+      <!-- ingestion → pdf_processing -->
+      <line x1="350" y1="134" x2="418" y2="134" stroke="#0ea5e9" stroke-width="1.5" marker-end="url(#arr2)" opacity=".8"/>
+      <!-- ingestion → config -->
+      <line x1="350" y1="120" x2="618" y2="86" stroke="#0ea5e9" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arr2)" opacity=".65"/>
+
+      <!-- retrieval → embeddings -->
+      <line x1="485" y1="78" x2="485" y2="218" stroke="#eab308" stroke-width="1.5" marker-end="url(#arr)" opacity=".8"/>
+      <!-- retrieval → config -->
+      <line x1="550" y1="54" x2="618" y2="82" stroke="#eab308" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arr)" opacity=".65"/>
+
+      <!-- pdf_processing → embeddings -->
+      <line x1="485" y1="158" x2="485" y2="218" stroke="#0ea5e9" stroke-width="1.5" marker-end="url(#arr2)" opacity=".8"/>
+      <!-- pdf_processing → chunking -->
+      <line x1="550" y1="134" x2="618" y2="230" stroke="#0ea5e9" stroke-width="1.5" marker-end="url(#arr2)" opacity=".8"/>
+      <!-- pdf_processing → config -->
+      <line x1="550" y1="120" x2="618" y2="88" stroke="#0ea5e9" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arr2)" opacity=".65"/>
+
+      <!-- embeddings → config (uses embedding_model) -->
+      <line x1="550" y1="235" x2="618" y2="105" stroke="#a855f7" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arr)" opacity=".65"/>
+
+      <!-- ingestion → PostgreSQL -->
+      <line x1="350" y1="150" x2="618" y2="345" stroke="#22c55e" stroke-width="1.5" marker-end="url(#arr)" opacity=".7"/>
+      <!-- retrieval → PostgreSQL -->
+      <line x1="550" y1="60" x2="680" y2="328" stroke="#eab308" stroke-width="1.5" marker-end="url(#arr)" opacity=".7"/>
+
+      <!-- agent → Groq -->
+      <line x1="350" y1="50" x2="818" y2="50" stroke="#f97316" stroke-width="1.5" marker-end="url(#arr)" opacity=".8"/>
+      <!-- pdf_processing → HF (VLM) -->
+      <line x1="550" y1="128" x2="818" y2="118" stroke="#fde68a" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#arr)" opacity=".6"/>
+
+      <!-- Legend -->
+      <line x1="30" y1="360" x2="65" y2="360" stroke="#2563eb" stroke-width="1.5"/>
+      <text x="70" y="364" fill="#7fa3cc" font-size="9">imports</text>
+      <line x1="120" y1="360" x2="155" y2="360" stroke="#2563eb" stroke-width="1.2" stroke-dasharray="5,3"/>
+      <text x="160" y="364" fill="#7fa3cc" font-size="9">uses (config)</text>
+      <line x1="240" y1="360" x2="275" y2="360" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="280" y="364" fill="#7fa3cc" font-size="9">DB writes/reads</text>
+      <line x1="380" y1="360" x2="415" y2="360" stroke="#f97316" stroke-width="1.5"/>
+      <text x="420" y="364" fill="#7fa3cc" font-size="9">external API</text>
+    </svg>
+  </div>
+
+  <!-- ═══════════════ MODULE DETAILS ═══════════════ -->
+  <div class="section-title">Module Details</div>
+  <div class="module-grid">
+
+    <!-- config.py -->
+    <div class="module-card">
+      <div class="module-header">
+        <div class="module-icon" style="background:rgba(34,197,94,.15)">⚙️</div>
+        <div>
+          <div class="module-title">config.py</div>
+          <div class="module-file">src/config.py</div>
+        </div>
+      </div>
+      <div class="module-desc">Global configuration hub. Initialises all shared resources — database URL, file paths, the local embedding model, the OpenAI-compatible HuggingFace client for VLM calls, the Groq client for the chat agent, and the system prompt. Loaded via <code>dotenv</code>.</div>
+      <ul class="fn-list">
+        <li><span class="fn-sig">DB_URL</span><span class="fn-note">PostgreSQL connection string</span></li>
+        <li><span class="fn-sig">embedding_model</span><span class="fn-note">SentenceTransformer("all-MiniLM-L6-v2")</span></li>
+        <li><span class="fn-sig">client</span><span class="fn-note">OpenAI(base_url=HF router) for VLM</span></li>
+        <li><span class="fn-sig">client_agent</span><span class="fn-note">Groq client for chat LLM</span></li>
+        <li><span class="fn-sig">AGENT_SYSTEM_PROMPT</span><span class="fn-note">Requirements analyst persona</span></li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">dotenv</span><span class="tag">openai</span><span class="tag">groq</span><span class="tag">sentence_transformers</span>
+      </div>
+    </div>
+
+    <!-- agent.py -->
+    <div class="module-card">
+      <div class="module-header">
+        <div class="module-icon" style="background:rgba(168,85,247,.15)">🤖</div>
+        <div>
+          <div class="module-title">agent.py</div>
+          <div class="module-file">src/agent.py</div>
+        </div>
+      </div>
+      <div class="module-desc">Implements the interactive chat loop. Maintains a rolling conversation history (system prompt + last 4 messages) to preserve context without exceeding token limits. Retrieves a single relevant chunk per query and injects it into the user message for grounded answering.</div>
+      <ul class="fn-list">
+        <li><span class="fn-sig">start_agent()</span><span class="fn-note">Blocking stdin loop; exits on "exit"</span></li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">config.client_agent</span><span class="tag">config.AGENT_SYSTEM_PROMPT</span><span class="tag">retrieval.process_query</span>
+      </div>
+    </div>
+
+    <!-- ingestion.py -->
+    <div class="module-card">
+      <div class="module-header">
+        <div class="module-icon" style="background:rgba(14,165,233,.15)">📥</div>
+        <div>
+          <div class="module-title">ingestion.py</div>
+          <div class="module-file">src/ingestion.py</div>
+        </div>
+      </div>
+      <div class="module-desc">Orchestrates the full ingestion pipeline. Iterates PDF files in <code>data/raw/</code>, assigns document IDs, and uses a psycopg3 connection to batch-insert chunks into the <code>rag_chunks</code> table. Also provides a table reset helper.</div>
+      <ul class="fn-list">
+        <li><span class="fn-sig">process_ingestion()</span><span class="fn-note">Main ingestion loop over all PDFs</span></li>
+        <li><span class="fn-sig">reset_table()</span><span class="fn-note">TRUNCATE rag_chunks RESTART IDENTITY</span></li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">psycopg</span><span class="tag">pgvector</span><span class="tag">config</span><span class="tag">pdf_processing</span>
+      </div>
+    </div>
+
+    <!-- pdf_processing.py -->
+    <div class="module-card">
+      <div class="module-header">
+        <div class="module-icon" style="background:rgba(14,165,233,.15)">📋</div>
+        <div>
+          <div class="module-title">pdf_processing.py</div>
+          <div class="module-file">src/pdf_processing.py</div>
+        </div>
+      </div>
+      <div class="module-desc">Per-page generator for PDFs. Converts each page to Markdown with <code>pymupdf4llm</code>, optionally describes embedded images via a VLM (Llama-4-Scout on HF, currently disabled), then delegates to chunking and embeddings. Yields structured dicts for the ingestion layer.</div>
+      <ul class="fn-list">
+        <li><span class="fn-sig">process_page(path)</span><span class="fn-note">Generator → yields page dicts</span></li>
+        <li><span class="fn-sig">process_vlm(path)</span><span class="fn-note">Inner fn — VLM image description (disabled)</span></li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">fitz</span><span class="tag">pymupdf4llm</span><span class="tag">pypdf</span><span class="tag">pytesseract</span><span class="tag">PIL</span>
+      </div>
+    </div>
+
+    <!-- chunking.py -->
+    <div class="module-card">
+      <div class="module-header">
+        <div class="module-icon" style="background:rgba(249,115,22,.15)">✂️</div>
+        <div>
+          <div class="module-title">chunking.py</div>
+          <div class="module-file">src/chunking.py</div>
+        </div>
+      </div>
+      <div class="module-desc">Pure-Python, dependency-free text splitter. Scans Markdown for ATX headings (<code>#</code>–<code>######</code>), flushes the accumulated buffer into a chunk on each new heading, and builds hierarchical titles (e.g. <em>Intro / Scope / Definitions</em>). Handles empty pages gracefully.</div>
+      <ul class="fn-list">
+        <li><span class="fn-sig">chunking_page(text)</span><span class="fn-note">Returns (titles, contents, ids)</span></li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">re</span><span class="tag">no external deps</span>
+      </div>
+    </div>
+
+    <!-- embeddings.py -->
+    <div class="module-card">
+      <div class="module-header">
+        <div class="module-icon" style="background:rgba(168,85,247,.15)">🔢</div>
+        <div>
+          <div class="module-title">embeddings.py</div>
+          <div class="module-file">src/embeddings.py</div>
+        </div>
+      </div>
+      <div class="module-desc">Thin wrapper around SentenceTransformer. Encodes a list of strings locally and returns float vectors as Python lists. Also contains a legacy <code>fake_embedding()</code> stub used during early development (still present, no longer called).</div>
+      <ul class="fn-list">
+        <li><span class="fn-sig">create_embedding(texts)</span><span class="fn-note">Batch-encodes via all-MiniLM-L6-v2</span></li>
+        <li><span class="fn-sig">fake_embedding(text, dim)</span><span class="fn-note">Legacy stub — unused in production</span></li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">sentence_transformers</span><span class="tag">config.embedding_model</span>
+      </div>
+    </div>
+
+    <!-- retrieval.py -->
+    <div class="module-card">
+      <div class="module-header">
+        <div class="module-icon" style="background:rgba(234,179,8,.15)">🔍</div>
+        <div>
+          <div class="module-title">retrieval.py</div>
+          <div class="module-file">src/retrieval.py</div>
+        </div>
+      </div>
+      <div class="module-desc">Handles semantic search at query time. Embeds the user's query, opens a short-lived DB connection, and uses pgvector's <code>&lt;=&gt;</code> cosine operator to rank all stored chunks. Returns the top 5 <code>(content, metadata, distance)</code> rows.</div>
+      <ul class="fn-list">
+        <li><span class="fn-sig">process_query(query)</span><span class="fn-note">Returns top-5 similar (content, meta, dist)</span></li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">psycopg</span><span class="tag">pgvector</span><span class="tag">embeddings</span><span class="tag">config.DB_URL</span>
+      </div>
+    </div>
+
+    <!-- main.py -->
+    <div class="module-card">
+      <div class="module-header">
+        <div class="module-icon" style="background:rgba(37,99,235,.15)">🚀</div>
+        <div>
+          <div class="module-title">main.py</div>
+          <div class="module-file">main.py</div>
+        </div>
+      </div>
+      <div class="module-desc">Top-level entry point. A <code>need_reset</code> flag controls whether the DB is wiped and re-ingested before starting the agent. Designed for iterative development where re-ingestion is only occasionally needed.</div>
+      <ul class="fn-list">
+        <li><span class="fn-sig">__main__ block</span><span class="fn-note">Conditionally resets DB, then starts agent</span></li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">ingestion</span><span class="tag">agent</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ DATABASE SCHEMA ═══════════════ -->
+  <div class="section-title">Database — rag_chunks Table</div>
+  <div class="schema-box">
+    <div class="schema-title">TABLE public.rag_chunks  (PostgreSQL + pgvector)</div>
+    <div class="schema-field">
+      <span class="field-name">id</span>
+      <span class="field-type">SERIAL PRIMARY KEY</span>
+      <span class="field-note">Auto-incrementing row ID</span>
+    </div>
+    <div class="schema-field">
+      <span class="field-name">document_id</span>
+      <span class="field-type">TEXT</span>
+      <span class="field-note">e.g. "doc-0", "doc-1" — identifies the source PDF</span>
+    </div>
+    <div class="schema-field">
+      <span class="field-name">chunk_index</span>
+      <span class="field-type">INTEGER</span>
+      <span class="field-note">Global chunk counter within the document</span>
+    </div>
+    <div class="schema-field">
+      <span class="field-name">content</span>
+      <span class="field-type">TEXT</span>
+      <span class="field-note">Raw Markdown text of the chunk</span>
+    </div>
+    <div class="schema-field">
+      <span class="field-name">metadata</span>
+      <span class="field-type">JSONB</span>
+      <span class="field-note">{"page_start": N} — 0-indexed page number</span>
+    </div>
+    <div class="schema-field">
+      <span class="field-name">embedding</span>
+      <span class="field-type">VECTOR(384)</span>
+      <span class="field-note">all-MiniLM-L6-v2 output; indexed with pgvector for cosine search</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ EXTERNAL DEPENDENCIES ═══════════════ -->
+  <div class="section-title">External Dependencies</div>
+  <div class="dep-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Package</th>
+          <th>Used In</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>groq</code></td><td>config, agent</td><td class="dep-purpose">Groq LLM API client — runs llama-3.3-70b-versatile for chat responses</td></tr>
+        <tr><td><code>openai</code></td><td>config, pdf_processing</td><td class="dep-purpose">OpenAI-compatible client pointed at HuggingFace Router for VLM image descriptions</td></tr>
+        <tr><td><code>sentence_transformers</code></td><td>config, embeddings</td><td class="dep-purpose">Local all-MiniLM-L6-v2 model for generating 384-dim text embeddings</td></tr>
+        <tr><td><code>psycopg</code> (v3)</td><td>ingestion, retrieval</td><td class="dep-purpose">Async-capable PostgreSQL adapter; used synchronously here</td></tr>
+        <tr><td><code>pgvector</code></td><td>ingestion, retrieval</td><td class="dep-purpose">PostgreSQL extension adapter — registers VECTOR type and enables <code>&lt;=&gt;</code> cosine operator</td></tr>
+        <tr><td><code>pymupdf4llm</code></td><td>pdf_processing</td><td class="dep-purpose">Converts PDF pages to clean LLM-friendly Markdown</td></tr>
+        <tr><td><code>fitz</code> (PyMuPDF)</td><td>pdf_processing</td><td class="dep-purpose">Low-level PDF rendering; required by pymupdf4llm</td></tr>
+        <tr><td><code>pypdf</code></td><td>pdf_processing</td><td class="dep-purpose">Page-count iteration and text extraction</td></tr>
+        <tr><td><code>pytesseract</code></td><td>pdf_processing</td><td class="dep-purpose">OCR fallback (imported but not actively called in current code)</td></tr>
+        <tr><td><code>PIL</code> (Pillow)</td><td>pdf_processing</td><td class="dep-purpose">Image handling for OCR / VLM pre-processing</td></tr>
+        <tr><td><code>python-dotenv</code></td><td>config</td><td class="dep-purpose">Loads <code>HF_TOKEN</code> and <code>GROQ_API_KEY</code> from <code>.env</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ═══════════════ TECH STACK ═══════════════ -->
+  <div class="section-title">Tech Stack at a Glance</div>
+  <div class="tech-grid">
+    <div class="tech-card">
+      <div class="tech-icon">🦙</div>
+      <div><div class="tech-name">Groq + Llama 3.3 70B</div><div class="tech-role">Chat agent LLM — fast inference via Groq cloud</div></div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🦙</div>
+      <div><div class="tech-name">Llama 4 Scout 17B (VLM)</div><div class="tech-role">Image description via HuggingFace Router (disabled)</div></div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🧬</div>
+      <div><div class="tech-name">all-MiniLM-L6-v2</div><div class="tech-role">Local 384-dim semantic embeddings</div></div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🐘</div>
+      <div><div class="tech-name">PostgreSQL + pgvector</div><div class="tech-role">Vector store with cosine similarity search</div></div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">📄</div>
+      <div><div class="tech-name">PyMuPDF + pymupdf4llm</div><div class="tech-role">PDF to Markdown conversion</div></div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🐍</div>
+      <div><div class="tech-name">Python 3.10+</div><div class="tech-role">Runtime — uses modern type hints &amp; walrus ops</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ OBSERVATIONS / TODOS ═══════════════ -->
+  <div class="section-title">Code Observations &amp; TODOs</div>
+  <div class="notes-grid">
+    <div class="note-card note-todo">
+      <strong>TODO — Re-ranking</strong>
+      <p>In <code>agent.py</code>, after retrieval only the top-1 chunk is used. The comment marks intent to add a re-ranking step to select the most relevant chunk from the top-5 candidates.</p>
+    </div>
+    <div class="note-card note-todo">
+      <strong>TODO — VLM Image Description</strong>
+      <p>In <code>pdf_processing.py</code>, the <code>process_vlm()</code> call inside <code>process_page()</code> is commented out. The infrastructure (base64 encoding, HF client, Llama 4 Scout) is in place but disabled.</p>
+    </div>
+    <div class="note-card note-todo">
+      <strong>TODO — Real Embedding API</strong>
+      <p><code>embeddings.py</code> still contains a <code>fake_embedding()</code> stub with a comment "Add real embedding and API call". The real <code>create_embedding()</code> is implemented but the stub was never removed.</p>
+    </div>
+    <div class="note-card note-issue">
+      <strong>Hardcoded Path</strong>
+      <p><code>config.py</code> contains an absolute path <code>/home/arda/Desktop/Projects/requirement_project/data/raw</code>. This breaks on any other machine. Should use a relative path or an environment variable.</p>
+    </div>
+    <div class="note-card note-issue">
+      <strong>Hardcoded DB Password</strong>
+      <p><code>DB_URL</code> in <code>config.py</code> embeds the PostgreSQL password in plain text. This should be moved to an environment variable (e.g. <code>DATABASE_URL</code> in <code>.env</code>).</p>
+    </div>
+    <div class="note-card note-issue">
+      <strong>Extracted Images Path</strong>
+      <p><code>pdf_processing.py</code> lists <code>"extracted_images"</code> (CWD-relative), which works only when the process is started from the project root. The root-level <code>extracted_images/</code> dir duplicates <code>data/extracted_images/</code>.</p>
+    </div>
+    <div class="note-card note-good">
+      <strong>Rolling Context Window</strong>
+      <p><code>agent.py</code> intelligently slices <code>messages[-4:]</code> plus the system prompt for each API call — preventing unbounded context growth while preserving recent turns.</p>
+    </div>
+    <div class="note-card note-good">
+      <strong>Generator-Based Ingestion</strong>
+      <p><code>pdf_processing.process_page()</code> is a Python generator (<code>yield</code>), meaning pages are processed one at a time without loading the entire PDF into memory.</p>
+    </div>
+    <div class="note-card note-good">
+      <strong>Pure-Python Chunker</strong>
+      <p><code>chunking.py</code> has zero non-stdlib dependencies. Hierarchical titles (e.g. "Intro / Section / Subsection") provide rich metadata at negligible cost.</p>
+    </div>
+  </div>
+
+</div><!-- /container -->
+</body>
+</html>

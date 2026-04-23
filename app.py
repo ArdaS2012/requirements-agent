@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, jsonify, session, send_from_d
 import os
 from datetime import datetime
 from src.config import client_agent, AGENT_SYSTEM_PROMPT, NR_HISTORY
-from src.retrieval import process_query
+from src.retrieval import process_query, rerank_query
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -80,11 +80,10 @@ def chat():
         if session_id not in conversation_start:
             conversation_start[session_id] = datetime.now().strftime("%Y%m%d_%H%M%S")
         results = process_query(query)
-        #TODO: rerank the retrieved chunks and select the most relevant ones to include in the prompt
-        #For now only take the most relevant chunk
+        reranked_results = rerank_query(query, results)
         #TODO: build security features to prevent prompt injection attacks since the retrieved chunks are directly included in the prompt
         # also to prevent queries that are not related to the document and just try to manipulate the model into giving wrong answers
-        top = results[0] if results else ("No relevant information found.", {}, 0.0)
+        top = reranked_results[0] if reranked_results else ("No relevant information found.", {}, 0.0)
         content, metadata = top[0], top[1]
         page = metadata.get("page_start", 0) + 1
         metadata_with_page = {**metadata, "page_start": page}

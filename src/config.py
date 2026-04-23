@@ -1,9 +1,9 @@
 import os
-
 from dotenv import load_dotenv
 from openai import OpenAI
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import CrossEncoder, SentenceTransformer
 from groq import Groq
+
 DB_URL = "postgresql://postgres:password@localhost:5432/requirements"
 base_path = "/home/arda/Desktop/Projects/requirement_project/data/raw"
 path_to_raw = os.listdir(base_path)
@@ -17,6 +17,8 @@ client = OpenAI(
 client_agent = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
 )
+cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
 NR_HISTORY = 10
 AGENT_SYSTEM_PROMPT = "You are an assistant for software requirements analysis. You will be provided questions to requirements of a specific document and need to answer as precisely as possible based on the content of the document." \
 " If you don't know the answer, say you don't know. Always be concise and precise in your answers. Do not provide any information that is not explicitly stated in the document. Always refer to the document content when answering questions." \

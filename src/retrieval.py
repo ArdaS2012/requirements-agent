@@ -1,8 +1,10 @@
 import psycopg
 from pgvector.psycopg import register_vector
 
-from .config import DB_URL
+from .config import DB_URL, cross_encoder
 from .embeddings import create_embedding
+
+
 
 def process_query(query):
     query = [query] #transform to list for embedding function
@@ -23,3 +25,15 @@ def process_query(query):
 
 
     return results
+
+def rerank_query(query, results):
+    if not results:
+        return []
+
+    contents = [row[0] for row in results]
+    query = [query] #transform to list for cross encoder
+    pairs = [[query[0], content] for content in contents]
+    scores = cross_encoder.predict(pairs)
+
+    reranked_results = sorted(zip(results, scores), key=lambda x: x[1], reverse=True)
+    return [result for result, score in reranked_results]
