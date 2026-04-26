@@ -31,14 +31,15 @@ def write_conversation_log(
 
     The log file is created on the first turn and appended to on every
     subsequent turn, so the full conversation can be reviewed offline.
-    Each turn records the user query, the top-3 retrieved chunks with their
-    distances, and the final LLM response.
+    Each turn records the user query, all reranked chunks with their
+    cross-encoder scores, and the final LLM response.
 
     Args:
         session_id:        Unique identifier for the browser session.
         timestamp:         Human-readable datetime string for this turn.
         query:             The raw user message.
-        retrieval_results: Rows returned by process_query() (before reranking).
+        retrieval_results: Rows returned by rerank_query() — each row is
+                           (content, metadata, distance, cross_encoder_score).
         system_prompt:     The system prompt sent to the LLM this turn.
         response:          The LLM's answer after output validation.
         turn:              Sequential turn number within the session.
@@ -58,13 +59,16 @@ def write_conversation_log(
 
         f.write(f"--- Turn {turn} | {timestamp} " + "-" * (54 - len(str(turn))) + "\n")
         f.write(f"USER QUERY\n{query}\n\n")
-        f.write("TOP 3 RETRIEVED CHUNKS\n")
-        for rank, row in enumerate(retrieval_results[:3], start=1):
+        f.write(f"ALL {len(retrieval_results)} RERANKED CHUNKS (cross-encoder order)\n")
+        for rank, row in enumerate(retrieval_results, start=1):
             content, metadata, distance = row[0], row[1], row[2]
+            score = row[3] if len(row) > 3 else None
             page = metadata.get("page_start", 0) + 1  # convert 0-based to 1-based
-            f.write(f"  Rank {rank} | distance={distance:.6f} | page={page}\n")
+            score_str = f" | ce_score={score:.4f}" if score is not None else ""
+            f.write(f"  Rank {rank} | distance={distance:.6f}{score_str} | page={page}\n")
             f.write(f"  Metadata : {metadata}\n")
-            f.write(f"  Content  : {content}\n\n")
+            f.write(f"  Content  : {content}\n")
+            f.write("  " + "-" * 60 + "\n\n")
         f.write("GENERATED RESPONSE\n")
         f.write(response + "\n")
         f.write("\n")
@@ -121,8 +125,12 @@ def chat():
 
         # Step 2: cross-encoder reranking for precision — pick the single best chunk
         reranked_results = rerank_query(query, results)
-        top = reranked_results[0] if reranked_results else ("No relevant information found.", {}, 0.0)
-        content, metadata = top[0], top[1]
+        if reranked_results:
+            content = "\n\n---\n\n".join(row[0] for row in reranked_results)
+            metadata = reranked_results[0][1]
+        else:
+            content = "No relevant information found."
+            metadata = {}
         page = metadata.get("page_start", 0) + 1  # convert 0-based to 1-based page number
         metadata_with_page = {**metadata, "page_start": page}
 
@@ -139,7 +147,7 @@ def chat():
             session_id=session_id,
             timestamp=timestamp,
             query=query,
-            retrieval_results=results if results else [],
+            retrieval_results=reranked_results if reranked_results else [],
             system_prompt=system_prompt,
             response=response,
             turn=turn_counter[session_id],

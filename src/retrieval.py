@@ -66,4 +66,5 @@ def rerank_query(query: str, results: list) -> list:
 
     # zip results with their scores, sort descending (higher score = more relevant)
     reranked_results = sorted(zip(results, scores), key=lambda x: x[1], reverse=True)
-    return [result for result, score in reranked_results]
+    # Return (content, metadata, distance, cross_encoder_score) tuples
+    return [(result[0], result[1], result[2], float(score)) for result, score in reranked_results]
